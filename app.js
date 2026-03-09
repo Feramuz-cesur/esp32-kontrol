@@ -1,6 +1,6 @@
 // Broker Ayarları
 const MQTT_SERVER = "broker.hivemq.com";
-const MQTT_PORT = 8000; // Dikkat! WebSockets portu genelde 8000 veya 8884'tür (1883 değil)
+const MQTT_PORT = 8884; // Hızlı WSS bağlantısı için HiveMQ portu 8884 (SSL destekli)
 const CLIENT_ID = "WebClient-" + Math.floor(Math.random() * 10000);
 
 // Topic Ayarları (ESP32 ile birebir aynı olmalı)
@@ -30,7 +30,7 @@ console.log("Bağlanılıyor: " + MQTT_SERVER + ":" + MQTT_PORT);
 client.connect({
     onSuccess: onConnect,
     onFailure: onFailure,
-    useSSL: false // Public Broker için doğrudan SSL'siz hızlı WebSocket bağlantısı
+    useSSL: true // GitHub Pages (HTTPS) üzerinden çalışması için ZORUNLU!
 });
 
 // MQTT Bağlantısı Başarılı Olduğunda
@@ -66,7 +66,7 @@ function onConnectionLost(responseObject) {
         setTimeout(() => {
             statusBadge.className = 'status-badge connecting';
             statusBadge.innerHTML = '<span class="dot"></span> Yeniden Bağlanılıyor...';
-            client.connect({ onSuccess: onConnect, useSSL: false });
+            client.connect({ onSuccess: onConnect, useSSL: true });
         }, 5000);
     }
 }
