@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32 Akıllı Ev Kontrolü</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Stil Dosyası -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>IoT Kontrol Paneli</h1>
+            <div id="connection-status" class="status-badge connecting">
+                <span class="dot"></span> Broker'a Bağlanılıyor...
+            </div>
+            <div id="esp32-status" class="status-badge disconnected" style="margin-top: 10px;">
+                <span class="dot"></span> ESP32 Durumu Bekleniyor...
+            </div>
+        </header>
+
+        <main class="device-grid">
+            <!-- 1. Cihaz Kartı -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Salon Lambası</h2>
+                    <span id="led1-badge" class="state-badge off">Kapalı</span>
+                </div>
+                <div class="action-buttons">
+                    <button id="btn-led1-on" class="btn btn-primary">AÇ</button>
+                    <button id="btn-led1-off" class="btn btn-danger">KAPAT</button>
+                </div>
+            </div>
+
+            <!-- 2. Cihaz Kartı -->
+            <div class="card">
+                <div class="card-header">
+                    <h2>Mutfak Lambası</h2>
+                    <span id="led2-badge" class="state-badge off">Kapalı</span>
+                </div>
+                <div class="action-buttons">
+                    <button id="btn-led2-on" class="btn btn-primary">AÇ</button>
+                    <button id="btn-led2-off" class="btn btn-danger">KAPAT</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Paho MQTT Kütüphanesi (Tarayıcı için WSS destekli) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+    <!-- Uygulama Mantığı -->
+    <script src="app.js"></script>
+</body>
+</html>

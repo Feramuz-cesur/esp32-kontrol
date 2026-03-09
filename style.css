@@ -1,0 +1,165 @@
+/* Genel Stil Ayarları */
+:root {
+    --bg-color: #0f172a;           /* Koyu lacivert/siyah arka plan */
+    --card-bg: #1e293b;            /* Kart arka planı */
+    --text-main: #f8fafc;          /* Açık gri/beyaz metin */
+    --text-muted: #94a3b8;         /* Soluk metin */
+    --primary: #3b82f6;            /* Mavi (Açma) */
+    --primary-hover: #2563eb;
+    --danger: #ef4444;             /* Kırmızı (Kapatma) */
+    --danger-hover: #dc2626;
+    --success: #10b981;            /* Yeşil (Bağlı/Açık durumu) */
+    --warning: #f59e0b;            /* Turuncu (Bağlanıyor) */
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 500px;
+    padding: 20px;
+}
+
+/* Üst Bilgi */
+header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+h1 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+/* Durum Rozeti (Örn: Broker'a Bağlı) */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--text-muted);
+}
+
+.status-badge.connected .dot { background-color: var(--success); box-shadow: 0 0 8px var(--success); }
+.status-badge.connecting .dot { background-color: var(--warning); animation: pulse 1.5s infinite; }
+.status-badge.disconnected .dot { background-color: var(--danger); }
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
+/* Kart Tasarımı */
+.device-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.card {
+    background-color: var(--card-bg);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.card-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* Cihaz Durumu (Açık/Kapalı) */
+.state-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.state-badge.off {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.state-badge.on {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+/* Butonlar */
+.action-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+    color: white;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary { background-color: var(--primary); }
+.btn-primary:hover { background-color: var(--primary-hover); }
+
+.btn-danger { background-color: var(--danger); }
+.btn-danger:hover { background-color: var(--danger-hover); }
+
+/* Responsive Düzenlemeler */
+@media (max-width: 480px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .card {
+        padding: 20px;
+    }
+}
