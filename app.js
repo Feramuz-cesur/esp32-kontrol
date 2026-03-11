@@ -1,3 +1,10 @@
+// --- THE THINGSPEAK & CHART AYARLARI ---
+const TS_CHANNEL_ID = "3295895";
+const TS_READ_API_KEY = "ZPIELNVVD3ZPO8EW";
+
+let sensorChart; // Chart nesnemiz bağlandıktan sonra kullanılacak (Global)
+let sonGelenSicaklik = null;
+
 // Broker Ayarları
 const MQTT_SERVER = "broker.hivemq.com";
 const MQTT_PORT = 8884; // Hızlı WSS bağlantısı için HiveMQ portu 8884 (SSL destekli)
@@ -31,13 +38,18 @@ const client = new Paho.MQTT.Client(MQTT_SERVER, MQTT_PORT, CLIENT_ID);
 client.onConnectionLost = onConnectionLost;
 client.onMessageArrived = onMessageArrived;
 
-// Sayfa Yüklendiğinde Bağlan
-console.log("Bağlanılıyor: " + MQTT_SERVER + ":" + MQTT_PORT);
-client.connect({
-    onSuccess: onConnect,
-    onFailure: onFailure,
-    useSSL: true // GitHub Pages (HTTPS) üzerinden çalışması için ZORUNLU!
-});
+// Sayfa Yüklendiğinde Başlat (ThingSpeak'den Eski Veriyi Çek + Cihazı Bağla)
+window.onload = () => {
+    initChart();       // Önce Geçmiş Veriyi Getir & Grafiği Çiz
+    
+    // Sonra MQTT Başlat
+    console.log("Bağlanılıyor: " + MQTT_SERVER + ":" + MQTT_PORT);
+    client.connect({
+        onSuccess: onConnect,
+        onFailure: onFailure,
+        useSSL: true // GitHub Pages (HTTPS) üzerinden çalışması için ZORUNLU!
+    });
+};
 
 // MQTT Bağlantısı Başarılı Olduğunda
 function onConnect() {
@@ -130,9 +142,30 @@ function onMessageArrived(message) {
         // Sensör verisi geliyorsa da online'dır, süreyi sıfırla
         clearTimeout(esp32Timeout);
         esp32Timeout = setTimeout(setEsp32Offline, 15000);
+        
+        // Veriyi geçici olarak tut (Çünkü hem sicaklık hem nem lazim grafiğe ayni anda)
+        sonGelenSicaklik = payload;
     }
     else if (topic === TOPIC_SENSOR_HUM) {
         humValueElement.innerHTML = `${payload} <span class="text-sm font-normal text-blue-200">%</span>`;
+        
+        // Eğer sicaklık az önce geldiyse, simdi Nem ile birlikte grafiği canli güncelle
+        if(sonGelenSicaklik !== null && sensorChart){
+            const currentTime = new Date().toLocaleTimeString('tr-TR', { hour12: false, hour: '2-digit', minute:'2-digit', second:'2-digit' });
+            
+            // Grafiğe yeni veriyi ekle
+            sensorChart.data.labels.push(currentTime);
+            sensorChart.data.datasets[0].data.push(sonGelenSicaklik); // Sıcaklık
+            sensorChart.data.datasets[1].data.push(payload); // Nem
+            
+            // Eğer grafik 50 veriyi (noktayõ) geçerse sağa doğru kaydırılarak eskiyi silsin
+            if (sensorChart.data.labels.length > 50) {
+                sensorChart.data.labels.shift();
+                sensorChart.data.datasets[0].data.shift();
+                sensorChart.data.datasets[1].data.shift();
+            }
+            sensorChart.update();
+        }
     }
     
     // 1. LED Durumu
@@ -188,4 +221,150 @@ document.getElementById('btn-led2-on').addEventListener('click', () => {
 
 document.getElementById('btn-led2-off').addEventListener('click', () => {
     publishMessage(TOPIC_LED2_CMD, "0");
+});
+
+// ==========================================
+// THINGSPEAK'TEN GEÇMİŞ VERİLERİ ÇEKME & CHART.JS
+// ==========================================
+
+let currentMinutes = 60; // Varsayılan olarak son 1 Saati göster (60 dakika)
+
+function initChart() {
+    const ctx = document.getElementById('sensorChart').getContext('2d');
+    
+    // Boş bir grafikle başla
+    sensorChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [], 
+            datasets: [
+                {
+                    label: 'Sıcaklık (°C)',
+                    borderColor: 'rgb(239, 68, 68)', // Tailwind red-500
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    data: [],
+                    yAxisID: 'y',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 0 // Noktaları gizle, akıcı dursun
+                },
+                {
+                    label: 'Nem (%)',
+                    borderColor: 'rgb(59, 130, 246)', // Tailwind blue-500
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    data: [],
+                    yAxisID: 'y1',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            color: '#cbd5e1', // Yazı renkleri
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { maxTicksLimit: 10 }
+                },
+                y: {
+                    type: 'linear', display: true, position: 'left',
+                    title: { display: true, text: 'Sıcaklık (°C)', color: 'rgb(239, 68, 68)' },
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    // Dağ gibi dalgalanma olmasın, referans skala verelim (Esnek Scaling)
+                    suggestedMin: 15, // Sıcaklık genellikle 15-35 arasıdır (Gerekirse bu sınırı aşar ama içi hep boş durmaz)
+                    suggestedMax: 35
+                },
+                y1: {
+                    type: 'linear', display: true, position: 'right',
+                    title: { display: true, text: 'Nem (%)', color: 'rgb(59, 130, 246)' },
+                    grid: { drawOnChartArea: false },
+                    // Nem için de benzer şekilde yumuşak geçiş aralığı (Örn Türkiye ortalaması 30-80)
+                    suggestedMin: 20,
+                    suggestedMax: 80
+                }
+            },
+            plugins: {
+                legend: { labels: { color: '#cbd5e1' } }
+            }
+        }
+    });
+
+    // İlk açılışta 1 Saatlik Veriyi Çek (60 dk)
+    fetchChartData(currentMinutes);
+}
+
+// Veri Çekme Fonksiyonu
+async function fetchChartData(minutes) {
+    // Önce Grafikteki Eski Verileri Temizle
+    if (sensorChart) {
+        sensorChart.data.labels = [];
+        sensorChart.data.datasets[0].data = [];
+        sensorChart.data.datasets[1].data = [];
+        sensorChart.update();
+    }
+
+    // API Parametresi: Son X dakikaya ait verileri getir
+    const tsUrl = `https://api.thingspeak.com/channels/${TS_CHANNEL_ID}/feeds.json?api_key=${TS_READ_API_KEY}&minutes=${minutes}`;
+    
+    try {
+        const response = await fetch(tsUrl);
+        const data = await response.json();
+        
+        if(data && data.feeds && data.feeds.length > 0){
+            data.feeds.forEach(feed => {
+                const t = new Date(feed.created_at);
+                // Eğer gün (24 Saat) modu seçiliyse saat yanına günü de koy, saat moduysa sadece saat kalsın
+                let timeOptions = { hour12: false, hour: '2-digit', minute:'2-digit' };
+                if (minutes > 720) timeOptions = {  day:'2-digit', month:'2-digit', hour12: false, hour: '2-digit', minute:'2-digit' };
+
+                const timeLabel = t.toLocaleTimeString('tr-TR', timeOptions);
+                const sicaklik = parseFloat(feed.field1);
+                const nem = parseFloat(feed.field2);
+                
+                if(!isNaN(sicaklik) && !isNaN(nem)){
+                    sensorChart.data.labels.push(timeLabel);
+                    sensorChart.data.datasets[0].data.push(sicaklik);
+                    sensorChart.data.datasets[1].data.push(nem);
+                }
+            });
+            sensorChart.update();
+            console.log(`ThingSpeak'ten son ${minutes} dakikaya ait ${data.feeds.length} veri grafiğe aktarıldı.`);
+        } else {
+             console.log("Bu zaman aralığında gösterilecek sensör verisi bulunamadı.");
+        }
+    } catch (error) {
+        console.error("Geçmiş veri çekilirken hata oluştu:", error);
+    }
+}
+
+// Zaman Butonları Click İşlemleri ve Tasarım Geçişleri
+const btnButtons = {
+    'btn-1h': 60,         // 60 dk (1 Saat)
+    'btn-12h': 720,       // 720 dk (12 Saat)
+    'btn-24h': 1440       // 1440 dk (24 Saat)
+};
+
+const defaultBtnClass = "px-4 py-2 rounded-lg font-medium transition-all hover:bg-slate-700/50 text-slate-400 hover:text-white";
+const activeBtnClass = "px-4 py-2 rounded-lg font-medium transition-all bg-emerald-500/20 text-emerald-400";
+
+Object.keys(btnButtons).forEach(btnId => {
+    document.getElementById(btnId).addEventListener('click', (e) => {
+        // Tüm butonları pasif (gri) yap
+        Object.keys(btnButtons).forEach(id => {
+            document.getElementById(id).className = defaultBtnClass;
+        });
+        
+        // Tıklanan butonu aktif (Yeşil/Emerald) yap
+        e.target.className = activeBtnClass;
+        
+        // Veriyi Güncelle (Örn: 12 Saat = 720dk)
+        currentMinutes = btnButtons[btnId];
+        fetchChartData(currentMinutes);
+    });
 });

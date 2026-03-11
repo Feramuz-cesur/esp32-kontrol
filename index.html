@@ -77,11 +77,31 @@
                 </div>
             </div>
 
+            <!-- GEÇMİŞ VERİ GRAFİĞİ -->
+            <div class="bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-700/50">
+                <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                    <h2 class="text-lg font-semibold tracking-wide">Sıcaklık ve Nem Geçmişi</h2>
+                    
+                    <!-- Zaman Filtresi Butonları -->
+                    <div class="flex bg-slate-900/50 p-1 rounded-xl border border-slate-700/50 text-sm">
+                        <button id="btn-1h" class="px-4 py-2 rounded-lg font-medium transition-all bg-emerald-500/20 text-emerald-400">Son 1 Saat</button>
+                        <button id="btn-12h" class="px-4 py-2 rounded-lg font-medium transition-all hover:bg-slate-700/50 text-slate-400 hover:text-white">Son 12 Saat</button>
+                        <button id="btn-24h" class="px-4 py-2 rounded-lg font-medium transition-all hover:bg-slate-700/50 text-slate-400 hover:text-white">Son 1 Gün</button>
+                    </div>
+                </div>
+
+                <div class="relative w-full h-[250px] sm:h-[300px]">
+                    <canvas id="sensorChart"></canvas>
+                </div>
+            </div>
+
         </main>
     </div>
 
-    <!-- Paho MQTT Kütüphanesi -->
+    <!-- Kütüphaneler -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <script src="app.js"></script>
 </body>
 </html>
