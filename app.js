@@ -12,11 +12,17 @@ const TOPIC_LED2_STATUS = "feramuz_iot_9876/led2/durum";
 
 const TOPIC_ESP32_STATUS = "feramuz_iot_9876/esp32/durum"; // LWT Online/Offline
 
+const TOPIC_SENSOR_TEMP = "feramuz_iot_9876/sensor/sicaklik";
+const TOPIC_SENSOR_HUM = "feramuz_iot_9876/sensor/nem";
+
 // Arayüz Elementlerini Seçme
 const statusBadge = document.getElementById('connection-status');
 const esp32StatusBadge = document.getElementById('esp32-status');
 const led1Badge = document.getElementById('led1-badge');
 const led2Badge = document.getElementById('led2-badge');
+
+const tempValueElement = document.getElementById('temp-value');
+const humValueElement = document.getElementById('hum-value');
 
 // Paho MQTT Client'ı Oluşturma
 const client = new Paho.MQTT.Client(MQTT_SERVER, MQTT_PORT, CLIENT_ID);
@@ -38,37 +44,61 @@ function onConnect() {
     console.log("MQTT Broker'a Bağlanıldı!");
     
     // UI Güncelleme
-    statusBadge.className = 'status-badge connected';
-    statusBadge.innerHTML = '<span class="dot"></span> Broker\'a Bağlı';
+    statusBadge.className = 'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-white/5 border border-white/10 text-emerald-400';
+    statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span> Broker\'a Bağlı';
     
     // ESP32'den gelen durum mesajlarını dinlemeye başla (Subscribe)
     client.subscribe(TOPIC_LED1_STATUS);
     client.subscribe(TOPIC_LED2_STATUS);
     client.subscribe(TOPIC_ESP32_STATUS); // Online/Offline durumunu dinle
+    
+    // Sensör verilerini dinlemeye başla
+    client.subscribe(TOPIC_SENSOR_TEMP);
+    client.subscribe(TOPIC_SENSOR_HUM);
+    
     console.log("Durum odalarına abone olundu.");
 }
 
 // MQTT Bağlantısı Başarısız Olduğunda
 function onFailure(error) {
     console.error("Bağlantı Hatası: ", error.errorMessage);
-    statusBadge.className = 'status-badge disconnected';
-    statusBadge.innerHTML = '<span class="dot"></span> Bağlantı Hatası!';
+    statusBadge.className = 'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-white/5 border border-white/10 text-red-500';
+    statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Bağlantı Hatası!';
 }
 
 // Bağlantı Koptuğunda
 function onConnectionLost(responseObject) {
     if (responseObject.errorCode !== 0) {
         console.error("Bağlantı Koptu: " + responseObject.errorMessage);
-        statusBadge.className = 'status-badge disconnected';
-        statusBadge.innerHTML = '<span class="dot"></span> Bağlantı Koptu';
+        statusBadge.className = 'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-white/5 border border-white/10 text-red-500';
+        statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Bağlantı Koptu';
         
         // Yeniden Bağlanma Denemesi
         setTimeout(() => {
-            statusBadge.className = 'status-badge connecting';
-            statusBadge.innerHTML = '<span class="dot"></span> Yeniden Bağlanılıyor...';
+            statusBadge.className = 'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-white/5 border border-white/10 text-yellow-500';
+            statusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse"></span> Yeniden Bağlanılıyor...';
             client.connect({ onSuccess: onConnect, useSSL: true });
         }, 5000);
     }
+}
+
+// Timeouts
+let esp32Timeout = null;
+
+// ESP32'yi Çevrimdışı (Offline) Yapma Fonksiyonu
+function setEsp32Offline() {
+    esp32StatusBadge.className = "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-white/5 border border-white/10 text-red-500";
+    esp32StatusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> ESP32 Çevrimdışı';
+    
+    // ESP çevrimdışı olunca LED'leri de bilinmeyen/kapalı duruma çekebiliriz
+    led1Badge.textContent = "BİLİNMİYOR";
+    led1Badge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-500/10 text-slate-500 border border-slate-500/20";
+    led2Badge.textContent = "BİLİNMİYOR";
+    led2Badge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-500/10 text-slate-500 border border-slate-500/20";
+    
+    // Sensör verilerini de sıfırla
+    tempValueElement.innerHTML = '-- <span class="text-sm font-normal text-red-200">°C</span>';
+    humValueElement.innerHTML = '-- <span class="text-sm font-normal text-blue-200">%</span>';
 }
 
 // Mesaj Geldiğinde (Durum Güncellemeleri)
@@ -77,31 +107,42 @@ function onMessageArrived(message) {
     const payload = message.payloadString;
     console.log("Gelen Mesaj -> Topic: " + topic + " - Mesaj: " + payload);
 
-    // ESP32 Online/Offline Durumu (LWT)
+    // ESP32 Online/Offline Durumu (LWT ve Heartbeat)
     if (topic === TOPIC_ESP32_STATUS) {
         if (payload === "online") {
-            esp32StatusBadge.className = "status-badge connected";
-            esp32StatusBadge.innerHTML = '<span class="dot"></span> ESP32 Çevrimiçi';
-        } else if (payload === "offline") {
-            esp32StatusBadge.className = "status-badge disconnected";
-            esp32StatusBadge.innerHTML = '<span class="dot"></span> ESP32 Çevrimdışı';
+            esp32StatusBadge.className = "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-white/5 border border-white/10 text-emerald-400";
+            esp32StatusBadge.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span> ESP32 Çevrimiçi';
             
-            // ESP çevrimdışı olunca LED'leri de bilinmeyen/kapalı duruma çekebiliriz
-            led1Badge.textContent = "BİLİNMİYOR";
-            led1Badge.className = "state-badge off";
-            led2Badge.textContent = "BİLİNMİYOR";
-            led2Badge.className = "state-badge off";
+            // Heartbeat Reset (15 saniye boyunca yeni mesaj gelmezse Offline say)
+            clearTimeout(esp32Timeout);
+            esp32Timeout = setTimeout(setEsp32Offline, 15000);
+            
+        } else if (payload === "offline") {
+            // Cihaz bilerek "offline" yolladıysa hemen çevrimdışı yap
+            clearTimeout(esp32Timeout);
+            setEsp32Offline();
         }
     }
     
-    // 1. LED Durumu (Gerçekten Yandı mı?)
+    // Sensör Verileri Gelirse UI'ı Güncelle
+    if (topic === TOPIC_SENSOR_TEMP) {
+        tempValueElement.innerHTML = `${payload} <span class="text-sm font-normal text-red-200">°C</span>`;
+        // Sensör verisi geliyorsa da online'dır, süreyi sıfırla
+        clearTimeout(esp32Timeout);
+        esp32Timeout = setTimeout(setEsp32Offline, 15000);
+    }
+    else if (topic === TOPIC_SENSOR_HUM) {
+        humValueElement.innerHTML = `${payload} <span class="text-sm font-normal text-blue-200">%</span>`;
+    }
+    
+    // 1. LED Durumu
     if (topic === TOPIC_LED1_STATUS) {
         if (payload === "1") {
             led1Badge.textContent = "AÇIK";
-            led1Badge.className = "state-badge on";
+            led1Badge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
         } else if (payload === "0") {
             led1Badge.textContent = "KAPALI";
-            led1Badge.className = "state-badge off";
+            led1Badge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20";
         }
     }
     
@@ -109,10 +150,10 @@ function onMessageArrived(message) {
     else if (topic === TOPIC_LED2_STATUS) {
         if (payload === "1") {
             led2Badge.textContent = "AÇIK";
-            led2Badge.className = "state-badge on";
+            led2Badge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
         } else if (payload === "0") {
             led2Badge.textContent = "KAPALI";
-            led2Badge.className = "state-badge off";
+            led2Badge.className = "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20";
         }
     }
 }

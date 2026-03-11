@@ -4,54 +4,84 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP32 Akıllı Ev Kontrolü</title>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    <!-- Stil Dosyası -->
-    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
 </head>
-<body>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4">
 
-    <div class="container">
-        <header>
-            <h1>IoT Kontrol Paneli</h1>
-            <div id="connection-status" class="status-badge connecting">
-                <span class="dot"></span> Broker'a Bağlanılıyor...
-            </div>
-            <div id="esp32-status" class="status-badge disconnected" style="margin-top: 10px;">
-                <span class="dot"></span> ESP32 Durumu Bekleniyor...
+    <div class="w-full max-w-lg">
+        <!-- HEADER -->
+        <header class="text-center mb-10">
+            <h1 class="text-3xl font-bold tracking-tight mb-5">IoT Kontrol Paneli</h1>
+            
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-3">
+                <div id="connection-status" class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-white/5 border border-white/10 text-yellow-500">
+                    <span class="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse"></span>
+                    <span>Broker'a Bağlanılıyor...</span>
+                </div>
+                
+                <div id="esp32-status" class="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-white/5 border border-white/10 text-slate-400">
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+                    <span>ESP32 Durumu Bekleniyor...</span>
+                </div>
             </div>
         </header>
 
-        <main class="device-grid">
-            <!-- 1. Cihaz Kartı -->
-            <div class="card">
-                <div class="card-header">
-                    <h2>Salon Lambası</h2>
-                    <span id="led1-badge" class="state-badge off">Kapalı</span>
+        <main class="flex flex-col gap-6">
+            
+            <!-- SENSÖR KARTLARI (Grid) -->
+            <div class="grid grid-cols-2 gap-4 mb-2">
+                <!-- Sıcaklık Kartı -->
+                <div class="bg-gradient-to-br from-red-500 to-red-700 rounded-2xl p-5 shadow-lg flex items-center transform transition-transform hover:-translate-y-1">
+                    <div class="text-3xl mr-3 bg-white/20 w-12 h-12 flex items-center justify-center rounded-xl shadow-inner">🌡️</div>
+                    <div>
+                        <h3 class="text-sm font-medium text-red-100 mb-1">Sıcaklık</h3>
+                        <p id="temp-value" class="text-2xl font-bold">-- <span class="text-sm font-normal text-red-200">°C</span></p>
+                    </div>
                 </div>
-                <div class="action-buttons">
-                    <button id="btn-led1-on" class="btn btn-primary">AÇ</button>
-                    <button id="btn-led1-off" class="btn btn-danger">KAPAT</button>
+
+                <!-- Nem Kartı -->
+                <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-2xl p-5 shadow-lg flex items-center transform transition-transform hover:-translate-y-1">
+                    <div class="text-3xl mr-3 bg-white/20 w-12 h-12 flex items-center justify-center rounded-xl shadow-inner">💧</div>
+                    <div>
+                        <h3 class="text-sm font-medium text-blue-100 mb-1">Nem</h3>
+                        <p id="hum-value" class="text-2xl font-bold">-- <span class="text-sm font-normal text-blue-200">%</span></p>
+                    </div>
                 </div>
             </div>
 
-            <!-- 2. Cihaz Kartı -->
-            <div class="card">
-                <div class="card-header">
-                    <h2>Mutfak Lambası</h2>
-                    <span id="led2-badge" class="state-badge off">Kapalı</span>
+            <!-- 1. CİHAZ KARTI (GPIO 2) -->
+            <div class="bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-700/50 transform transition-all hover:border-slate-600">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-lg font-semibold tracking-wide">GPIO 2</h2>
+                    <span id="led1-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20">Kapalı</span>
                 </div>
-                <div class="action-buttons">
-                    <button id="btn-led2-on" class="btn btn-primary">AÇ</button>
-                    <button id="btn-led2-off" class="btn btn-danger">KAPAT</button>
+                <div class="flex gap-3">
+                    <button id="btn-led1-on" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-semibold transition-all active:scale-95 shadow-md hover:shadow-blue-500/25">AÇ</button>
+                    <button id="btn-led1-off" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-semibold transition-all active:scale-95 shadow-md hover:shadow-red-500/25">KAPAT</button>
                 </div>
             </div>
+
+            <!-- 2. CİHAZ KARTI (GPIO 4) -->
+            <div class="bg-slate-800 rounded-2xl p-6 shadow-xl border border-slate-700/50 transform transition-all hover:border-slate-600">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-lg font-semibold tracking-wide">GPIO 4</h2>
+                    <span id="led2-badge" class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-500 border border-red-500/20">Kapalı</span>
+                </div>
+                <div class="flex gap-3">
+                    <button id="btn-led2-on" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-semibold transition-all active:scale-95 shadow-md hover:shadow-blue-500/25">AÇ</button>
+                    <button id="btn-led2-off" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-semibold transition-all active:scale-95 shadow-md hover:shadow-red-500/25">KAPAT</button>
+                </div>
+            </div>
+
         </main>
     </div>
 
-    <!-- Paho MQTT Kütüphanesi (Tarayıcı için WSS destekli) -->
+    <!-- Paho MQTT Kütüphanesi -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js" type="text/javascript"></script>
-    <!-- Uygulama Mantığı -->
     <script src="app.js"></script>
 </body>
 </html>
